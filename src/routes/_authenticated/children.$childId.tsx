@@ -10,7 +10,7 @@ import { useState, useRef } from "react";
 import { Camera, Activity as ActivityIcon, NotebookPen, Utensils, Moon, Check, X, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/children/$childId")({
+export const Route = createFileRoute("/_authenticated/children/$childId")({
   component: ChildPage,
 });
 
