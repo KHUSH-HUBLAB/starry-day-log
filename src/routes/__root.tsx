@@ -11,6 +11,8 @@ import {
 import appCss from "../styles.css?url";
 import { DaycareProvider } from "@/lib/daycare-store";
 import { AppHeader } from "@/components/AppHeader";
+import { AuthProvider } from "@/hooks/use-auth";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -115,10 +117,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <DaycareProvider>
-        <AppHeader />
-        <Outlet />
-      </DaycareProvider>
+      <AuthProvider>
+        <DaycareProvider>
+          <AppHeader />
+          <Outlet />
+          <Toaster />
+        </DaycareProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

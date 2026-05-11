@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Users, CalendarCheck, Camera } from "lucide-react";
 import heroImg from "@/assets/hero-daycare.jpg";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "Little Stars Daycare Manager" },
