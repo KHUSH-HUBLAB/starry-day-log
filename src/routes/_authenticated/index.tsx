@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useDaycare } from "@/lib/daycare-store";
+import { useDaycare, MOOD_META } from "@/lib/daycare-store";
 import { ChildCard } from "@/components/ChildCard";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Users, CalendarCheck, Camera } from "lucide-react";
+import { Plus, Users, CalendarCheck, Camera, Megaphone, Sparkles, UtensilsCrossed, ArrowRight } from "lucide-react";
 import heroImg from "@/assets/hero-daycare.jpg";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -14,8 +14,6 @@ export const Route = createFileRoute("/_authenticated/")({
     meta: [
       { title: "Little Stars Daycare Manager" },
       { name: "description", content: "A warm, mobile-friendly app for educators to manage children, attendance, activities, photos, meals and naps." },
-      { property: "og:title", content: "Little Stars Daycare Manager" },
-      { property: "og:description", content: "Care for little ones, beautifully organized." },
     ],
   }),
   component: Index,
@@ -25,8 +23,13 @@ function Index() {
   const { state, addChild } = useDaycare();
   const [open, setOpen] = useState(false);
 
-  const present = state.attendance.filter((a) => a.date === new Date().toISOString().slice(0, 10) && a.status === "present").length;
+  const today = new Date().toISOString().slice(0, 10);
+  const present = state.attendance.filter((a) => a.date === today && a.status === "present").length;
   const photosToday = state.photos.length;
+  const todaysActivities = state.activities
+    .filter((a) => a.date.slice(0, 10) === today)
+    .slice(0, 6);
+  const childById = (id: string) => state.children.find((c) => c.id === id);
 
   return (
     <div className="mx-auto max-w-5xl px-4 pb-24 pt-6">
@@ -42,20 +45,15 @@ function Index() {
             <div className="mt-5 flex flex-wrap gap-2">
               <AddChildDialog open={open} setOpen={setOpen} onAdd={addChild} />
               <Button asChild variant="outline" className="rounded-full">
-                <Link to="/">
-                  <CalendarCheck className="h-4 w-4" /> Mark attendance
-                </Link>
+                <Link to="/menu"><UtensilsCrossed className="h-4 w-4" /> Weekly menu</Link>
+              </Button>
+              <Button asChild variant="outline" className="rounded-full">
+                <Link to="/announcements"><Megaphone className="h-4 w-4" /> Announcements</Link>
               </Button>
             </div>
           </div>
           <div className="relative h-48 md:h-full">
-            <img
-              src={heroImg}
-              alt="Children playing in a sunny daycare garden"
-              width={1280}
-              height={800}
-              className="h-full w-full object-cover"
-            />
+            <img src={heroImg} alt="Children playing in a sunny daycare garden" width={1280} height={800} className="h-full w-full object-cover" />
           </div>
         </div>
       </section>
@@ -66,6 +64,72 @@ function Index() {
         <Stat icon={<CalendarCheck className="h-4 w-4" />} label="Present today" value={present} tone="sage" />
         <Stat icon={<Camera className="h-4 w-4" />} label="Photos shared" value={photosToday} tone="sky" />
       </section>
+
+      {/* Daily Activity Feed */}
+      <section className="mt-8">
+        <div className="flex items-end justify-between mb-3">
+          <h2 className="text-xl font-display flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> Today's activity feed</h2>
+          <span className="text-xs text-muted-foreground">{todaysActivities.length} updates</span>
+        </div>
+        {todaysActivities.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center text-sm text-muted-foreground">
+            No activities logged yet today. Open a child's profile to share what they're up to.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {todaysActivities.map((a) => {
+              const c = childById(a.childId);
+              return (
+                <li key={a.id} className="rounded-2xl border border-border bg-card p-3 flex items-start gap-3">
+                  <div className={`h-10 w-10 rounded-2xl grid place-items-center text-lg shrink-0 bg-${c?.color ?? "muted"}/60`}>
+                    {c?.emoji ?? "✨"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm">
+                      <span className="font-medium">{c?.name ?? "A child"}</span>{" "}
+                      <span className="text-muted-foreground">— {a.title}</span>
+                    </div>
+                    {a.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{a.description}</div>}
+                    <div className="text-[11px] text-muted-foreground mt-1">{new Date(a.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      {/* Mood snapshot */}
+      <section className="mt-8">
+        <h2 className="text-xl font-display mb-3">Mood snapshot</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {state.children.map((c) => {
+            const m = state.moods.find((mm) => mm.childId === c.id && mm.date === today);
+            const meta = m ? MOOD_META[m.value] : null;
+            return (
+              <Link key={c.id} to="/children/$childId" params={{ childId: c.id }} className={`rounded-2xl border border-border p-3 ${meta ? meta.tone + "/60" : "bg-card"}`}>
+                <div className="text-2xl">{meta?.emoji ?? "❔"}</div>
+                <div className="text-sm font-medium mt-1 truncate">{c.name.split(" ")[0]}</div>
+                <div className="text-[11px] text-muted-foreground">{meta?.label ?? "Not logged"}</div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Latest announcement preview */}
+      {state.announcements[0] && (
+        <section className="mt-8">
+          <div className="flex items-end justify-between mb-3">
+            <h2 className="text-xl font-display flex items-center gap-2"><Megaphone className="h-5 w-5 text-primary" /> Latest announcement</h2>
+            <Link to="/announcements" className="text-xs text-primary inline-flex items-center gap-1">View all <ArrowRight className="h-3 w-3" /></Link>
+          </div>
+          <div className="rounded-2xl border border-border bg-butter/40 p-4">
+            <div className="font-medium">{state.announcements[0].title}</div>
+            <div className="text-sm text-muted-foreground mt-1">{state.announcements[0].body}</div>
+          </div>
+        </section>
+      )}
 
       {/* Children */}
       <section className="mt-8">

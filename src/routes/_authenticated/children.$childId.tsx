@@ -1,5 +1,5 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useDaycare, type AttendanceStatus } from "@/lib/daycare-store";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useDaycare, MOOD_META, type AttendanceStatus, type MoodValue } from "@/lib/daycare-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +23,7 @@ const colorMap = {
 
 function ChildPage() {
   const { childId } = Route.useParams();
-  const { state, setAttendance, getAttendance, addActivity, addNote, addPhoto, addMeal, addNap } = useDaycare();
+  const { state, setAttendance, getAttendance, addActivity, addNote, addPhoto, addMeal, addNap, setMood, getMood } = useDaycare();
   const child = state.children.find((c) => c.id === childId);
   if (!child) {
     return (
@@ -66,6 +66,30 @@ function ChildPage() {
           <AttBtn current={status} value="present" onClick={() => setAttendance(child.id, "present")} icon={<Check className="h-4 w-4" />} label="Present" tone="bg-sage" />
           <AttBtn current={status} value="late" onClick={() => setAttendance(child.id, "late")} icon={<Clock className="h-4 w-4" />} label="Late" tone="bg-butter" />
           <AttBtn current={status} value="absent" onClick={() => setAttendance(child.id, "absent")} icon={<X className="h-4 w-4" />} label="Absent" tone="bg-peach" />
+        </div>
+      </div>
+
+      {/* Mood today */}
+      <div className="mt-4 rounded-3xl border border-border bg-card p-4">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Mood today</div>
+        <div className="grid grid-cols-5 gap-2">
+          {(Object.keys(MOOD_META) as MoodValue[]).map((m) => {
+            const active = getMood(child.id)?.value === m;
+            const meta = MOOD_META[m];
+            return (
+              <button
+                key={m}
+                onClick={() => setMood(child.id, m)}
+                className={cn(
+                  "rounded-2xl py-2 border transition-all flex flex-col items-center gap-0.5",
+                  active ? `${meta.tone} border-transparent shadow-sm scale-[1.02]` : "bg-background border-border hover:bg-muted",
+                )}
+              >
+                <span className="text-xl">{meta.emoji}</span>
+                <span className="text-[10px] font-medium">{meta.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

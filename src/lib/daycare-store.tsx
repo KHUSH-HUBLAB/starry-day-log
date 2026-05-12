@@ -58,6 +58,40 @@ export type Attendance = {
   status: AttendanceStatus;
 };
 
+export type MoodValue = "happy" | "calm" | "tired" | "fussy" | "sad";
+
+export type Mood = {
+  childId: string;
+  date: string; // YYYY-MM-DD
+  value: MoodValue;
+  note?: string;
+};
+
+export const MOOD_META: Record<MoodValue, { label: string; emoji: string; tone: string }> = {
+  happy: { label: "Happy", emoji: "😄", tone: "bg-butter" },
+  calm: { label: "Calm", emoji: "😊", tone: "bg-sage" },
+  tired: { label: "Tired", emoji: "😴", tone: "bg-sky" },
+  fussy: { label: "Fussy", emoji: "😣", tone: "bg-peach" },
+  sad: { label: "Sad", emoji: "😢", tone: "bg-muted" },
+};
+
+export type Announcement = {
+  id: string;
+  date: string; // ISO
+  title: string;
+  body: string;
+};
+
+export type MenuDay = "Mon" | "Tue" | "Wed" | "Thu" | "Fri";
+export const MENU_DAYS: MenuDay[] = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+export type MenuEntry = {
+  day: MenuDay;
+  breakfast: string;
+  lunch: string;
+  snack: string;
+};
+
 type State = {
   children: Child[];
   attendance: Attendance[];
@@ -66,6 +100,9 @@ type State = {
   photos: Photo[];
   meals: Meal[];
   naps: Nap[];
+  moods: Mood[];
+  announcements: Announcement[];
+  menu: MenuEntry[];
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -95,6 +132,20 @@ const initialState: State = {
   naps: [
     { id: "z1", childId: "c1", date: today(), start: "12:30", end: "14:00" },
   ],
+  moods: [
+    { childId: "c1", date: today(), value: "happy" },
+    { childId: "c2", date: today(), value: "calm" },
+  ],
+  announcements: [
+    { id: "an1", date: new Date().toISOString(), title: "Picture day on Friday 📸", body: "Please dress your little one in their favourite outfit. Smiles encouraged!" },
+  ],
+  menu: [
+    { day: "Mon", breakfast: "Oatmeal & berries", lunch: "Chicken & rice", snack: "Apple slices" },
+    { day: "Tue", breakfast: "Yogurt parfait", lunch: "Pasta primavera", snack: "Carrot sticks" },
+    { day: "Wed", breakfast: "Pancakes", lunch: "Fish & potatoes", snack: "Cheese cubes" },
+    { day: "Thu", breakfast: "Toast & eggs", lunch: "Veggie soup", snack: "Banana muffin" },
+    { day: "Fri", breakfast: "Fruit bowl", lunch: "Mini pizzas", snack: "Popcorn" },
+  ],
 };
 
 type Ctx = {
@@ -107,18 +158,26 @@ type Ctx = {
   addPhoto: (p: Omit<Photo, "id" | "date">) => void;
   addMeal: (m: Omit<Meal, "id" | "date">) => void;
   addNap: (n: Omit<Nap, "id" | "date">) => void;
+  setMood: (childId: string, value: MoodValue, note?: string) => void;
+  getMood: (childId: string) => Mood | undefined;
+  addAnnouncement: (a: Omit<Announcement, "id" | "date">) => void;
+  removeAnnouncement: (id: string) => void;
+  updateMenu: (day: MenuDay, patch: Partial<Omit<MenuEntry, "day">>) => void;
 };
 
 const DaycareCtx = createContext<Ctx | null>(null);
 
-const STORAGE_KEY = "little-stars-daycare-v1";
+const STORAGE_KEY = "little-stars-daycare-v2";
 
 export function DaycareProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>(() => {
     if (typeof window === "undefined") return initialState;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as State) : initialState;
+      if (!raw) return initialState;
+      const parsed = JSON.parse(raw) as Partial<State>;
+      // Merge to ensure new keys exist for older stored data
+      return { ...initialState, ...parsed };
     } catch {
       return initialState;
     }
@@ -150,6 +209,22 @@ export function DaycareProvider({ children }: { children: ReactNode }) {
     addPhoto: (p) => setState((s) => ({ ...s, photos: [{ ...p, id: id(), date: now() }, ...s.photos] })),
     addMeal: (m) => setState((s) => ({ ...s, meals: [{ ...m, id: id(), date: now() }, ...s.meals] })),
     addNap: (n) => setState((s) => ({ ...s, naps: [{ ...n, id: id(), date: now() }, ...s.naps] })),
+    setMood: (childId, val, note) =>
+      setState((s) => {
+        const d = today();
+        const others = s.moods.filter((m) => !(m.childId === childId && m.date === d));
+        return { ...s, moods: [...others, { childId, date: d, value: val, note }] };
+      }),
+    getMood: (childId) => state.moods.find((m) => m.childId === childId && m.date === today()),
+    addAnnouncement: (a) =>
+      setState((s) => ({ ...s, announcements: [{ ...a, id: id(), date: now() }, ...s.announcements] })),
+    removeAnnouncement: (rid) =>
+      setState((s) => ({ ...s, announcements: s.announcements.filter((a) => a.id !== rid) })),
+    updateMenu: (day, patch) =>
+      setState((s) => ({
+        ...s,
+        menu: s.menu.map((m) => (m.day === day ? { ...m, ...patch } : m)),
+      })),
   };
 
   return <DaycareCtx.Provider value={value}>{children}</DaycareCtx.Provider>;
