@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 export function AppHeader() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { session, signOut } = useAuth();
+  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
   const isAuthPage = path === "/login" || path === "/signup";
